@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+
+<meta charset="utf-8" />
+
+<html>
+
+  <head>
+
+    <title>WebSocket Test</title>
+
+    <script language="javascript" type="text/javascript">
+
+      var output;
+
+      var websocket;
+
+    
+
+      function connect(wsUri, nick) {
+
+        websocket = new WebSocket (wsUri, "chat");
+
+        writeToScreen('INITIALIZING (readyState == ' + websocket.readyState + ')');
+
+        websocket.onopen = function(event) { onOpen(event) };       // Wird aufgerufen, sobald readyState == 1
+
+        websocket.onmessage = function(event) { onMessage(event) }; // Wird aufgerufen, sobald eine Nachricht empfangen wird
+
+        websocket.onclose = function(event) { onClose(event) };     // Wird aufgerufen, sobald readyState == 3
+
+        websocket.onerror = function(event) { onError(event) };     // Wird aufgerufen, sobald ein Fehler auftritt
+
+      }
+
+
+
+      function onOpen(event) {
+
+        writeToScreen('CONNECTED as user "' + document.getElementById('nick_name').value + '" (readyState == ' + websocket.readyState+')');
+
+        document.getElementById("con").disabled=true;
+
+        document.getElementById("discon").disabled=false;
+
+        document.getElementById("div_socket").style.background="green";
+
+      }
+
+    
+
+      function onMessage(event) {
+
+        writeToScreen(event.data);
+
+      }
+
+
+
+      function onClose(event) {     // Sobald ein Closing-Frame vom Server ankommt oder die Verbindung erst gar nicht aufgebaut werden kann
+
+          writeToScreen('wasClean: ' + event.wasClean);
+
+          writeToScreen('Reason: ' + event.reason);
+
+          writeToScreen('Statuscode: ' + event.code);
+
+        if(websocket.readyState == 3) {
+
+            writeToScreen("DISCONNECTED (readyState == " + websocket.readyState+")");
+
+        } else {
+
+            writeToScreen("UNKNOWN ERROR");
+
+        }
+
+        document.getElementById("div_socket").style.background="red";
+
+      }
+
+
+
+      function onError(event) {
+
+          writeToScreen('Error: ' + event.reason + ' (' + event.code +')');
+
+//        writeToScreen("Error: " +event.code +CloseEvent.code);
+
+      }
+
+    
+
+      function doSend() {
+
+        var message = document.getElementById('nick_name').value+ "$$"+document.getElementById('text2send').value;
+
+//        writeToScreen("SENDING: " + message);
+
+        websocket.send(message);
+
+      }
+
+
+
+      function disconnect() {
+
+        websocket.close(1000);                                      // Client initiiert Closing-Handshake (Statuscode == 1000)
+
+        if(websocket.readyState == 2) {
+
+            writeToScreen("CLOSING-HANDSHAKE (readyState == " + websocket.readyState+")");
+
+        }
+
+        document.getElementById("con").disabled=false;
+
+        document.getElementById("discon").disabled=true;
+
+      }
+
+
+
+      function writeToScreen(message) {
+
+        var p = document.createElement("p");
+
+        p.appendChild(document.createTextNode(message));
+
+        document.getElementById("output").insertBefore(p, document.getElementById("output").firstChild);
+
+      }
+
+    </script>
+
+  </head>
+
+  <body>
+
+    <h2>Chat über WebSockets</h2>
+
+    <div id="div_socket" style="position:absolute; left:10px; top:50px; width:300px; float:left; overflow:auto; background:red; box-shadow: 5px 5px 15px silver">
+
+        <p style="font-family: Verdana, sans-serif; font-size: 85%; line-height: 0%">Endpunkt: <input type="text" id="sock_uri" value="ws://192.168.0.216:9080/chat"/></p>
+
+        <p style="font-family: Verdana, sans-serif; font-size: 85%; line-height: 0%">Nickname: <input type="text" id="nick_name" value="Stefan"/></p>
+
+        <input id="con" type="button" value="Connect" onclick="connect(document.getElementById('sock_uri').value)"/>
+
+        <input id="discon" type="button" value="Disconnect" disabled="true" onclick="disconnect()"/>
+
+    </div>
+
+
+
+    <div style="position:absolute; left: 10px;  top: 170px;  width:300px; float:left;overflow: auto;background: grey; box-shadow: 5px 5px 15px silver">
+
+        Text: <input type="text" id="text2send" placeholder="Gib eine Nachricht ein!" size="30"/>
+
+        <input  type="button" value="Send" onclick="doSend(); document.getElementById('text2send').value=''"/><br/>
+
+    </div>
+
+
+
+    <div id="output" style="position:absolute; left: 450px;  top: 50px; width: 600px; height: 600px; background:grey; box-shadow: 5px 5px 15px silver"/>
+
+  </body>
+
+</html>
