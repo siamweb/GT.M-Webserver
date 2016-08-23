@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export gtmdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+export gtmdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/bin"
 
 source $gtmdir/vars
 

@@ -5,6 +5,8 @@ Start
 
  Do Init^WWWconf
 
+ Do Log("Server starting")
+
  Set ^WWW("sockdev")=^WWW("localhost")_":"_^WWW("port")
 
  Open ^WWW("sockdev"):(ZLISTEN=^WWW("port")_":TCP":ATTACH=^WWW("socket"))::"SOCKET" 

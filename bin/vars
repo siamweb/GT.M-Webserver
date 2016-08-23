@@ -1,0 +1,8 @@
+#!/bin/bash
+export gtm_max_sockets=1024
+export gtm_dist=/usr/lib/x86_64-linux-gnu/fis-gtm/V6.2-002A-2build1_x86_64
+export gtmgbldir=/home/stefan/git/GT.M-Webserver/bin/server.gld
+export gtmroutines='/home/stefan/git/GT.M-Webserver/bin /usr/lib/x86_64-linux-gnu/fis-gtm/V6.2-002A-2build1_x86_64/libgtmutil.so /usr/lib/x86_64-linux-gnu/fis-gtm/V6.2-002A-2build1_x86_64'
+export gtm_log=/home/stefan/git/GT.M-Webserver/bin/log
+export gtm_tmp=/tmp
+export gtm_link=RECURSIVE

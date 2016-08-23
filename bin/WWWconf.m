@@ -10,7 +10,7 @@ Init
  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
  ;Environment Variables
- Set ^WWW("localpath")=$ZDirectory_"/www"
+ Set ^WWW("localpath")=$ZDirectory_"/../www"
  Set ^WWW("localhost")="127.0.0.1"
  Set ^WWW("port")=9080
  Set ^WWW("recordsize")=1048576 

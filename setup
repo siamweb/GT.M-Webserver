@@ -3,16 +3,13 @@
 if [ "$1" = "" ]; then 
     echo "define path to gtm"
 else
-    export gtmdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+    export gtmdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/bin"
     export gtm_dist=$1
-    export gtmgbldir="$gtmdir/g/server.gld"
-    export gtmroutines="$gtmdir/o*($gtmdir/r) $gtm_dist/libgtmutil.so $gtm_dist"
+    export gtmgbldir="$gtmdir/server.gld"
+    export gtmroutines="$gtmdir $gtm_dist/libgtmutil.so $gtm_dist"
 
-    export gtm_log="/tmp"
+    export gtm_log="$gtmdir/log"
     export gtm_tmp="/tmp"
-
-    #if [ -f $gtmdir/vars ]; then
-    #    rm $gtmdir/vars  
 
     echo '#!/bin/bash' > $gtmdir/vars
 
@@ -23,6 +20,8 @@ else
 
     echo "export gtm_log=$gtm_log" >> $gtmdir/vars
     echo "export gtm_tmp=$gtm_tmp" >> $gtmdir/vars
+
+    echo "export gtm_link=RECURSIVE" >> $gtmdir/vars
 
     $gtm_dist/mumps -r GDE @$gtmdir/gde
     cd $gtmdir
