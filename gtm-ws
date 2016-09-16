@@ -1,9 +1,41 @@
 #!/bin/bash
 
+
 export gtmdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/bin"
 
 source $gtmdir/vars
 
 cd $gtmdir
-$gtm_dist/mumps -run ^WWW
+
+usage="$(basename "$0") [-h] [-r] [-c] [-s] -- GT.M Webserver
+
+where:
+    -h  show this help text
+    -r  runs the server
+    -c  shows the condition of the server
+    -s  stopps the server"
+
+while getopts 'hrcs' option; do
+    case "$option" in
+        h)  echo "$usage"
+            exit
+            ;;
+        r)  nohup $gtm_dist/mumps -run Start^WWW </dev/null>/dev/null 2>&1 &
+            sleep 1
+            $gtm_dist/mumps -run Status^WWW
+            exit
+            ;;
+        c)  $gtm_dist/mumps -run Status^WWW
+            exit
+            ;;
+        s)  $gtm_dist/mumps -run Stop^WWW
+            $gtm_dist/mumps -run Status^WWW
+            exit
+            ;;
+        \?) echo "$usage" >&2
+            exit
+            ;;
+    esac
+done
+shift $((OPTIND - 1))
 

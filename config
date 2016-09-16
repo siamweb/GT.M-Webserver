@@ -1,0 +1,177 @@
+###########################################################
+# Configuration File
+###########################################################
+
+
+###########################################################
+# The path should direct to the directory which contains 
+# all files accesable throught the network. 
+###########################################################
+filepath    : /home/stefan/git/GT.M-Webserver-2.0/www
+
+###########################################################
+# Determines the Port which is used for the server.
+# Attend that the Ports 0-100 are protected in some
+# unix distribution and you need root privilegs 
+# to access those.
+###########################################################
+port        : 9080
+
+###########################################################
+# It is Possible to set the domain which is used by
+# the server. The head of the response given to a http request
+# will contain this information.
+###########################################################
+domain      : www.example.de
+
+###########################################################
+# The name of the server is also transmitted in the head
+# of the response
+###########################################################
+server      : GTMSever/1.0 (Unix)
+
+###########################################################
+# A realm is needed for the authentification
+###########################################################
+realm       : example realm
+
+###########################################################
+# The path to the logfile
+###########################################################
+logfile     : /home/stefan/git/GT.M-Webserver-2.0/log/log.txt
+
+###########################################################
+# The following Part determines some configuration needed
+# for the Hyper Text Transfer Protocol (http).
+###########################################################
+http:
+
+###########################################################
+# You can determine which uri is pointing on the file
+# in the given directory. If you want to have an 
+# Authorization befor getting the file you need 
+# to set auth to 1 otherwies to 0
+###########################################################
+    files:
+        /chat:
+            path    : chat.html
+            auth    : 0
+
+###########################################################
+# 
+###########################################################
+    routines:
+        /time:
+          routine   : Time^examples(data)
+          auth      : 1
+
+###########################################################
+#
+###########################################################
+    states:
+        101 : HTTP/1.1 101 Switching Protocols
+        200 : HTTP/1.1 200 OK
+        201 : HTTP/1.1 201 Created
+        400 : HTTP/1.1 400 Bad Request
+        401 : HTTP/1.1 401 Unauthorized
+        404 : HTTP/1.1 404 Not Found
+        408 : HTTP/1.1 408 Request Time-out
+        409 : HTTP/1.1 409 Conflict
+        411 : HTTP/1.1 411 Length Required
+        413 : HTTP/1.1 413 Request Entity Too Large
+        418 : HTTP/1.1 418 I'm a teapot
+        501 : HTTP/1.1 501 Not Implemented
+        503 : HTTP/1.1 503 Service Unavailable
+
+###########################################################
+#
+###########################################################
+    error:
+        404 : /error/404.html
+
+###########################################################
+# 
+###########################################################
+websocket:
+
+###########################################################
+# 
+###########################################################
+    routines:
+
+###########################################################
+# The implemented routine needs the parameters "sockid" and "data".
+# An Error will occure if there are other parameters for the routine.
+# You can determine the subroutines needed for the Websocketprotocoll.
+# Set sync to 0 if you want to run the routine in an other process.
+# If the routine runs in an other process the server won't be blocked
+# while processing the routine.
+###########################################################
+        /chat:
+            routine     : Chat^examples(sockid,data)
+            subroutine  : chat
+            channel     : chat
+            sync        : 0
+        /superchat:
+            routine     : Superchat^examples(sockid,data)
+            subroutine  : superchat
+            channel     : chat
+            sync        : 1
+
+###########################################################
+# 
+###########################################################
+mimes:
+    acad      : Content-Type: application/acad
+    dwg       : Content-Type: application/acad
+    applefile : Content-Type: application/applefile
+    gz        : Content-Type: application/gzip
+    json      : Content-Type: application/json
+    xls       : Content-Type: application/msexcel
+    xla       : Content-Type: application/msexcel
+    hlp       : Content-Type: application/mshelp
+    chm       : Content-Type: application/mshelp
+    ppt       : Content-Type: application/mspowerpoint
+    ppz       : Content-Type: application/mspowerpoint
+    pps       : Content-Type: application/mspowerpoint
+    pot       : Content-Type: application/mspowerpoint
+    doc       : Content-Type: application/msword
+    dot       : Content-Type: application/msword
+    bin       : Content-Type: application/octet-stream
+    exe       : Content-Type: application/octet-stream
+    com       : Content-Type: application/octet-stream
+    dll       : Content-Type: application/octet-stream
+    class     : Content-Type: application/octet-stream
+    pdf       : Content-Type: application/pdf
+    ai        : Content-Type: application/postscript
+    eps       : Content-Type: application/postscript
+    ps        : Content-Type: application/postscript
+    rtc       : Content-Type: application/rtc
+    rtf       : Content-Type: application/rtf
+    xlsx      : Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+    docx      : Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document
+    zip       : Content-Type: application/zip
+
+    gif       : Content-Type: image/gif
+    jpeg      : Content-Type: image/jpeg
+    jpg       : Content-Type: image/jpeg
+    jpe       : Content-Type: image/jpeg
+    png       : Content-Type: image/png
+    ico       : Content-Type: image/x-icon
+    rgb       : Content-Type: image/x-rgb
+
+    csv       : Content-Type: text/comma-separated-values
+    css       : Content-Type: text/css
+    htm       : Content-Type: text/html
+    html      : Content-Type: text/html
+    shtml     : Content-Type: text/html
+    js        : Content-Type: text/javascript
+    txt       : Content-Type: text/plain
+    rtx       : Content-Type: text/richtext
+    xml       : Content-Type: text/xml
+
+    mpeg       : Content-Type: video/mpeg
+    mpg       : Content-Type: video/mpeg
+    mpe       : Content-Type: video/mpeg
+    avi       : Content-Type: video/x-msvideo
+

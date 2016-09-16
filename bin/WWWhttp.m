@@ -1,269 +1,216 @@
 WWWhttp;
 
 
-Read(sockid,ip)
+Read(sockid)
 
- New REQUEST,RESPONSE
-
- Do Log^WWW("Receive Message from Connection="_sockid)
+ Do Log^WWWlog("Receive Message from Connection="_sockid)
  
  Use ^WWW("sockdev"):SOCKET=sockid
 
+ Set ^WWW("con",sockid)="RECEIVING"
+ Set ^WWW("con",sockid,"time")=$Zdate($Horolog,"SS6024DDMMYEAR")
+ Set ^WWW("con",sockid,"websocket")=0
+
  Read in
 
- If $Data(^WWW("http","connections",sockid,"buffer"))&(in'="") Do
- . Set in=^WWW("http","connections",sockid,"buffer")_in
+ If (in="") Quit
 
- If in'[$Char(13,10,13,10) Do  Quit 
- . Set ^WWW("http","connections",sockid)="RECEIVING"
- . Set ^WWW("http","connections",sockid,"buffer")=in
- . Set ^WWW("http","connections",sockid,"time")=$HOROLOG
- . Do Log^WWW("Use Buffer connection="_sockid)
+ Do Log^WWWlog("Read Message")
 
- Do Request(sockid,in)
+ If (($Data(^WWW("con",sockid,"head","complete"))=0)!(^WWW("con",sockid,"head","complete")=0)) Do
+ . Do ProcessHead(sockid,in)
 
- If (REQUEST("method")="")!(REQUEST("path")="") Do Error^WWWres(sockid,400) Quit
- If REQUEST("head","Content-Length")>^WWW("recordsize") Do Error^WWWres(sockid,413) Quit
+ If (^WWW("con",sockid,"head","complete")=0) Quit
 
- Set REQUEST("body")=$Piece(in,$Char(13,10,13,10),2,^WWW("recordsize"))
+ If (^WWW("con",sockid,"method")="") Do Error(sockid,400) Quit
+ If (^WWW("con",sockid,"path")="") Do Error(sockid,400) Quit
 
- If (REQUEST("head","Content-Length")'=-1)&(REQUEST("head","Content-Length")>$Length(REQUEST("body"))) Do  Quit 
- . Set ^WWW("http","connections",sockid)="RECEIVING"
- . Set ^WWW("http","connections",sockid,"buffer")=in
- . Set ^WWW("http","connections",sockid,"time")=$HOROLOG
- . Do Log^WWW("Use Buffer connection="_sockid)
- 
- Kill ^WWW("http","connections",sockid,"buffer")
+ Do Log^WWWlog("Head complete Succeded")
 
- Do Response^WWWres(sockid)
+ If (($Data(^WWW("con",sockid,"body","complete"))=0)!(^WWW("con",sockid,"body","complete")=0)) Do
+ . Do ProcessBody(sockid,in)
 
- If RESPONSE("type")="ERROR" Quit
+ If (^WWW("con",sockid,"body","complete")=0) Quit
 
- Do Authentication(sockid,ip)              
+ Do Log^WWWlog("Body complete Succeded")
+
+ If ($$Authentication(sockid)) Do Error(sockid,401) Quit
+
+ Do Log^WWWlog("Authentification Succeded")
+
+ Set state=$$Websocket(sockid)
+
+ If ((state'=1)&(state'=0)) Do Error(sockid,state) Quit
+
+ If (state=1) Quit
+
+ Do Log^WWWlog("Websocket Succeded")
+
+ Set ^WWW("con",sockid)="PROCESSING"
+ Set ^WWW("con",sockid,"time")=$Zdate($Horolog,"SS6024DDMMYEAR")
+
+ Set method=^WWW("con",sockid,"method")
+
+ Do Log^WWWlog("Generating Response for method:"_method)
+
+ If ($Data(^WWW("http","distributor",method))) Do  Quit
+ . Use ^WWW("sockdev"):DETACH=sockid
+ . Set jobprocessparam=^WWW("http","distributor",method)_":(output="_"""SOCKET:"_sockid_""""_":input="_"""SOCKET:"_sockid_""""_")"
+ . Job @jobprocessparam 
+
+ Do Error(sockid,501)
 
  Quit
 
 
-Request(sockid,in)
+ProcessHead(sockid,in)
+
+ If $Data(^WWW("con",sockid,"head","buffer")) Do
+ . Set in=^WWW("con",sockid,"head","buffer")_in
+ . Kill ^WWW("con",sockid,"head","buffer")
+
+ If in'[$Char(13,10,13,10) Do  Quit
+ . Set ^WWW("con",sockid,"head","buffer")=in
+ . Set ^WWW("con",sockid,"head","complete")=0
 
  Set head=$Piece(in,$Char(13,10,13,10))
 
  Set lines=$Length(head,$Char(13,10))
  Set line=$Piece(head,$Char(13,10))
 
- Set REQUEST("method")=$Piece(line," ")
- Set REQUEST("path")=$Piece($Piece(line," ",2),"?")
- Set REQUEST("query")=$Piece($Piece(line," ",2),"?",2,999)
+ Set path=$Piece($Piece(line," ",2),"?")
 
- Set length=$Length(REQUEST("path"))
+ Set length=$Length(path)
 
- If (length>1)&($Extract(REQUEST("path"),length,length)="/") Do
- . Set REQUEST("path")=$Extract(REQUEST("path"),1,length-1) 
+ If (length>1)&($Extract(path,length,length)="/") Do
+ . Set path=$Extract(path,1,length-1) 
+
+ Set ^WWW("con",sockid,"method")=$Piece(line," ")
+ Set ^WWW("con",sockid,"path")=path
+ Set ^WWW("con",sockid,"query")=$Piece($Piece(line," ",2),"?",2,999)
 
  For i=2:1:lines Do
  . Set line=$Piece(head,$Char(13,10),i)
- . Set REQUEST("head",$Piece(line,":"))=$Piece(line,": ",2)
+ . Set ^WWW("con",sockid,"head",$Piece(line,":"))=$Piece(line,": ",2)
 
- If $Data(REQUEST("head","Content-Length"))=0 Set REQUEST("head","Content-Length")=-1
+ Set ^WWW("con",sockid,"head","complete")=1
 
  Quit
 
 
-Authentication(sockid,ip)
+ProcessBody(sockid,in)
 
- Set path=REQUEST("path") 
- Set method=REQUEST("method")
+ Set body=$Piece(in,$Char(13,10,13,10),2,^WWW("stringmax"))
+
+ If $Data(^WWW("con",sockid,"body","buffer")) Do
+ . Set body=^WWW("con",sockid,"body","buffer")_in
+ . Kill ^WWW("con",sockid,"body","buffer")
+
+ Set length=$Length(body)
+
+ If (length=0) Do  Quit
+ . Set ^WWW("con",sockid,"body","complete")=1
+ . Set ^WWW("con",sockid,"body","length")=length
+
+
+ ;TODO length passt nicht muss das noch besser überarbeiten
+ Set clength=^WWW("con",sockid,"head","Content-Length")
+
+ If ($Data(^WWW("con",sockid,"body","complete"))) Do
+ . Set length=^WWW("con",sockid,"body","length")
+
+
+
+ If (clength<^WWW("stringmax")) Do  Quit
+ . Set ^WWW("con",sockid,"body","length")=length
+ . If (length<clength) Do  Quit 
+ . . Set ^WWW("con",sockid,"body","complete")=0
+ . . Set ^WWW("con",sockid,"body","buffer")=body
+ . Set ^WWW("con",sockid,"body")=body
+ . Set ^WWW("con",sockid,"body","complete")=1
+
+ Set ^WWW("con",sockid,"body","split")=1
+
+ Set i=0
+
+ For  Do  Quit:length>=clength!x=""
+ . Read x#^WWW("stringmax")
+ . Quit:x=""
+ . Set length=length+$Length(x)
+ . Set ^WWW("con",sockid,"body",i)=x 
+ . Set i=i+1
+
+ Set ^WWW("con",sockid,"body","complete")=1
+ Set ^WWW("con",sockid,"body","length")=length
+
+ If (length<clength)
+ . Set ^WWW("con",sockid,"body","complete")=0
+
+ Quit
+
+
+Authentication(sockid)
+
+ Set path=^WWW("con",sockid,"path")
+ Set method=^WWW("con",sockid,"method")
+
+ Set authorization=-1
+
+ If ($Data(^WWW("con",sockid,"head","Authorization"))) Do
+ . Set authorization=^WWW("con",sockid,"head","Authorization")
+
  Set auth=0
 
- If $Data(^WWW("http","path",path,"auth"))'=0 Do
- . Set auth=^WWW("http","path",path,"auth")
+ If ($Data(^WWW("http","files",path,"auth"))'=0) Do
+ . Set auth=^WWW("http","files",path,"auth")
 
- If $Data(^WWW("http","protocol",path,"auth"))'=0 Do
- . Set auth=^WWW("http","protocol",path,"auth")
+ If ($Data(^WWW("http","routines",path,"auth"))'=0) Do
+ . Set auth=^WWW("http","routines",path,"auth")
  
- If $Data(^WWWHTTPDATA(path,"auth"))'=0 Do
- . Set auth=^WWWHTTPDATA(path,"auth")
+ If ($Data(^WWWDATA(path,"auth"))'=0) Do
+ . Set auth=^WWWDATA(path,"auth")
 
  If (method="PUT")!(method="POST")!(method="DELETE") Set auth=1
 
- If (auth=1)&($Data(REQUEST("head","Authorization"))'=0) Do
- . Set auth=$$Login(REQUEST("head","Authorization"))
- 
- If auth=1 Do Error^WWWres(sockid,401) Quit
+ If ((auth=1)&(authorization'=-1)) Do
+ . Set auth=$$Login^WWWutils(authorization)
 
- If $Data(^WWW("http","distributor",REQUEST("method"))) Do  Quit
- . Do @^WWW("http","distributor",REQUEST("method"))
- 
- Do Error^WWWres(sockid,501) 
-
- Quit
-
- 
-Login(user)
-
- Set permission=1
- Set x=""
-
- For  Do  Quit:x=""
- . Set x=$Order(^WWWUSER(x))
- . Quit:x=""
- . If user=^WWWUSER(x) Do
- . . Set permission=0
- . . Set x=""
- . . Do Log^WWW("User "_x_"logged in")
-
- Quit permission
+ Quit auth
 
 
-Pathtovar(path)
+Websocket(sockid)
 
- Set x=""
+ If (^WWW("con",sockid,"method")'="GET") Quit 0
 
- Set varparam="^WWWDATABASE("""
+ Set upgrade=""
 
- For i=2:1 Do  Quit:x=""
- . Set x=$Piece(path,"/",i)
- . Quit:x=""
- . If i'=2 Set varparam=varparam_""","""
- . Set varparam=varparam_x
+ If ($Data(^WWW("con",sockid,"head","Upgrade"))) Do
+ . Set upgrade=^WWW("con",sockid,"head","Upgrade")
 
- Set varparam=varparam_""")"
+ If ((upgrade'="websocket")&(upgrade'="Websocket")&(upgrade'="WebSocket")) Quit 0
 
- Quit varparam
+ Set version=""
 
+ If ($Data(^WWW("con",sockid,"head","Sec-WebSocket-Version"))) Do
+ . Set version=^WWW("con",sockid,"head","Sec-WebSocket-Version")
 
-Close(sockid)
+ If (version'=13) Quit 400
 
- Close ^WWW("sockdev"):SOCKET=sockid
+ Set path=^WWW("con",sockid,"path")
 
- Kill ^WWW("http","connections",sockid)
+ If ($Data(^WWW("websocket","routines",path,"routine"))=0) Quit 404
 
- Quit
+ Do Open^WWWwebsocket(sockid)
 
-
-GET(sockid)
- 
- Use ^WWW("sockdev"):SOCKET=sockid
-
- Set path=RESPONSE("path")
- Set head=RESPONSE("head")
- Set body=RESPONSE("body")
-
- If RESPONSE("type")="DATA" Do  Quit
- . Set varparam=$$Pathtovar(path)
- . Set body=@varparam
- . Do Send^WWWres(head,body)
- . Do Close(sockid)
-
- If RESPONSE("type")="WEBSOCKET" Do
- . Do Create^WWWws(sockid,path)
- . Do Send^WWWres(head,body)
- . Do Log^WWW("WebSocket Established socket="_sockid)
-
- If RESPONSE("type")="ROUTINE" Do
- . Set data=REQUEST("query") 
- . Use ^WWW("sockdev"):DETACH=sockid
- . Set jobprocessparam="Routine^WWWres(path,head,data):(output="_"""SOCKET:"_sockid_""""_":input="_"""SOCKET:"_sockid_""""_")"
- . Job @jobprocessparam 
- . Do Log^WWW("Executed Routine="_path)
-
- If RESPONSE("type")="FILE" Do
- . Use ^WWW("sockdev"):DETACH=sockid
- . Set jobprocessparam="SendFile^WWWres(path,head):(output="_"""SOCKET:"_sockid_""""_":input="_"""SOCKET:"_sockid_""""_")"
- . Job @jobprocessparam                       
-
- Kill ^WWW("http","connections",sockid)
-
- Quit
+ Quit 1
 
 
-POST(sockid)
+Error(sockid,code)
 
- Use ^WWW("sockdev"):SOCKET=sockid
+ Use ^WWW("sockdev"):DETACH=sockid
+ Set jobprocessparam="ERROR^WWWerror(code):(output="_"""SOCKET:"_sockid_""""_":input="_"""SOCKET:"_sockid_""""_")"
+ Job @jobprocessparam
 
- Set path=RESPONSE("path")
- Set head=RESPONSE("head")
- Set body=RESPONSE("body")
+ Kill ^WWW("con",sockid)
 
- If RESPONSE("type")="ROUTINE" Do  Quit
- . Set data=body
- . Use ^WWW("sockdev"):DETACH=sockid
- . Set jobprocessparam="Routine^WWWres(path,head,data):(output="_"""SOCKET:"_sockid_""""_":input="_"""SOCKET:"_sockid_""""_")"
- . Job @jobprocessparam 
- . Do Log^WWW("Executed Routine="_path)
- . Kill ^WWW("http","connections",sockid)
-
- If RESPONSE("type")="DATA" Do  Quit
- . Set varparam=""
- . For  Do  Quit:$Data(@varparam)=0
- . . Set ident="doc"_$Random(999999)
- . . Set newpath=path_"/"_ident
- . . Set varparam=$$Pathtovar(newpath)
- . Do Create^WWWres(varparam,newpath,body) 
- . Do Close(sockid)
-
- Do Error^WWWres(sockid,409)
-
- Quit
-
-
-PUT(sockid)
-
- Use ^WWW("sockdev"):SOCKET=sockid
-
- Set path=RESPONSE("path")
- Set body=RESPONSE("body")
-
- If $Data(^WWW("http","protocol",path,"routine"))'=0 Do  Quit
- . Do Error^WWWres(sockid,409)
-
- If $Data(^WWW("http","path",path))'=0 Do  Quit
- . Do Error^WWWres(sockid,409)
-
- Set varparam=$$Pathtovar(path)
-
- If $Data(^WWWHTTPDATA(path))'=0 Do  Quit
- . Do Update^WWWres(sockid,varparam,path,body)
-
- Do Create^WWWres(varparam,path,body)
- Do Close(sockid)
- 
- Quit
-
-
-DELETE(sockid)
-
- Use ^WWW("sockdev"):SOCKET=sockid
-
- Set path=RESPONSE("path")
- Set head=RESPONSE("head")
- Set body=RESPONSE("body")
-
- If RESPONSE("type")="DATA" Do  Quit
- . Set varparam=$$Pathtovar(path)
- . Set head=^WWW("http","state",200)_$Char(13,10)
- . Set body="Deleted URL: "_path
- . ZKill @varparam
- . Kill ^WWWHTTPDATA(path)
- . Do Send^WWWres(head,body)
- . Do Close(sockid)
- . Do Log^WWW("Deleted "_varparam_" path="_path)
-
- Do Error^WWWres(sockid,409)
-
- Quit
-
-
-HEAD(sockid)
-
- Use ^WWW("sockdev"):SOCKET=sockid
- 
- Set head=RESPONSE("head")
- Set body=""
-
- Do Send^WWWres(head,body)
-
- Do Log^WWW("Send HEAD")
-
- Do Close(sockid)
  Quit

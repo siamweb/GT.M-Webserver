@@ -3,7 +3,11 @@
 if [ "$1" = "" ]; then 
     echo "define path to gtm"
 else
-    export gtmdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/bin"
+    dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+    export PATH=$PATH:$dir
+
+    export gtmdir="$dir/bin $dir/scripts"
     export gtm_dist=$1
     export gtmgbldir="$gtmdir/server.gld"
     export gtmroutines="$gtmdir $gtm_dist/libgtmutil.so $gtm_dist"
@@ -26,5 +30,5 @@ else
     $gtm_dist/mumps -r GDE @$gtmdir/gde
     cd $gtmdir
     $gtm_dist/mupip create
-    $gtm_dist/mupip set -global_buffers=1048576 -file server.dat
+    $gtm_dist/mupip set -global_buffers=65536 -file server.dat
 fi
